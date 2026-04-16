@@ -1,30 +1,34 @@
 # Workshop — Mock Mode with MSW v2
 
 **Duration:** 1 hour · **Audience:** mid-level frontend engineers
-· **Format:** in-person, paired with the instructor walking the room
+· **Format:** in-person, instructor walking the room
 
 This file is the **script**. It takes you from a half-wired project
 to a fully working one, then sets you loose on adding a brand-new
-mocked endpoint. Each phase says exactly what to change, what to
-observe, and what the teaching point is.
+mocked endpoint.
 
-If you've not read `README.md` yet, do that first — it covers Node
-setup, scripts, and the architecture map.
+**Ground rule for every phase:** You do NOT touch any React file
+*except* `src/main.tsx` in Phase 2. Everything else the workshop
+changes lives under `mocks/`. That's the promise — this workshop
+is about mocking, not about rebuilding components.
+
+If you haven't read `README.md` yet, do that first. It covers Node
+setup, the scripts, and the architecture map.
 
 ---
 
 ## The progression at a glance
 
-| Phase | You do                                         | You see                                        |
-| ----- | ---------------------------------------------- | ---------------------------------------------- |
-| 0     | `npm install`, `npm run dev`                   | A broken page — mocks are off                  |
-| 1     | `npm run dev:mock`                             | Pill turns red but page still fails            |
-| 2     | Uncomment `await initMocking()` in `main.tsx`  | Properties load                                |
-| 3     | Uncomment `HostsSection` in `App.tsx`          | Four mocked hosts with superhost badges        |
-| 4     | Uncomment `StoriesSection` in `App.tsx`        | Four travel stories from the real API          |
-| 5     | `npm run dev:hybrid`                           | Hosts switch to real users, properties stay mocked |
-| 6     | Create `amenities` domain (the exercise)       | Chips on every property card                   |
-| 7     | Write a section test for your new domain       | `vitest run` stays green                       |
+| Phase | You do                                                         | You see                                           |
+| ----- | -------------------------------------------------------------- | ------------------------------------------------- |
+| 0     | `npm install`, `npm run dev`                                   | Hosts from real API, properties broken, pill disabled |
+| 1     | `npm run dev:mock`                                             | Pill turns red — but page is still broken         |
+| 2     | Uncomment `await initMocking()` in `src/main.tsx` *(only React change)* | Properties + mocked hosts appear                  |
+| 3     | Click the mock pill                                            | Hosts swap between mocked and real                |
+| 4     | `npm run dev:hybrid`                                           | Hosts turn real again, properties stay mocked     |
+| 5     | Observe the "Travel stories" section                           | Same data regardless of the pill (unmocked)       |
+| 6     | Add the `/amenities` mock under `mocks/`                       | Chips appear on every property card               |
+| 7     | Write `mocks/domains/amenities.mock.spec.ts`                   | `vitest run` stays green                          |
 
 ---
 
@@ -40,23 +44,28 @@ npm run dev
 
 ### Observe
 
-- Header pill says **"Mock unavailable"** (with a lock icon) — this
-  is the disabled state because `VITE_ENABLE_MOCKING` isn't set.
-- The properties grid shows `Couldn't load properties — Error: 404`.
-- There is **no** "Meet your hosts" strip and **no** "Travel stories"
-  section yet.
+- Header pill: **"Mock unavailable"** with a lock icon.
+- **Hosts strip** shows ten users with coloured initials: Leanne
+  Graham, Ervin Howell, Clementine Bauch, … — those are real
+  JSONPlaceholder users because nothing is intercepting.
+- **Properties grid**: `Couldn't load properties — Error: 404`.
+  JSONPlaceholder doesn't have `/properties`, so the real API
+  rejects the request.
+- **Travel stories** shows four posts of lorem ipsum — real posts
+  from `/posts`.
 
 ### Teaching point
 
-The app is intentionally half-wired. With mocks off, the real API
-(`jsonplaceholder.typicode.com`) doesn't have `/properties`, so the
-request 404s. Mocks are what will make this work.
+Without mocks, fetches go straight to the real backend. Endpoints
+that exist give you real data; endpoints that don't exist give
+you a 404. Mocks are what give you the freedom to ship the UI
+anyway.
 
 ---
 
 ## Phase 1 — Enable mock mode via env (3 min)
 
-Stop the dev server with `Ctrl+C`. Run:
+Stop the dev server (`Ctrl+C`). Run:
 
 ```bash
 npm run dev:mock
@@ -64,121 +73,94 @@ npm run dev:mock
 
 ### Observe
 
-- Header pill is now red: **"Mock ON"**.
-- The properties grid is STILL broken — same 404 error.
+- Pill is now red: **"Mock ON"**.
+- The page looks **the same as Phase 0**. Hosts are still the real
+  users, properties still 404.
 
 ### Teaching point
 
-"Env flag on" is not enough. Something in the app has to actually
-bootstrap the Service Worker. Open `src/main.tsx` — you'll find
-one line commented out. Keep it commented for now. We'll uncomment
-it together in the next phase.
+`VITE_ENABLE_MOCKING=true` tells the Zustand store the worker
+*should* be available, but nothing has actually registered it. The
+flag alone doesn't do the work. Open `src/main.tsx` and look for
+the `TODO (Phase 2)` comments — we're about to flip them.
 
 ---
 
-## Phase 2 — Start the worker (5 min)
+## Phase 2 — Start the worker (5 min) · **only React change of the workshop**
 
-Open `src/main.tsx`. You'll see:
+Open `src/main.tsx`. It looks like this:
 
 ```tsx
+// TODO (Phase 2) — uncomment the import AND the bootstrap call
+// below so the MSW worker is started when VITE_ENABLE_MOCKING=true.
+//
+// import { initMocking } from '../mocks/core/init';
+...
 async function bootstrap() {
-  // TODO (Phase 2) — uncomment to bootstrap MSW when VITE_ENABLE_MOCKING=true.
+  // TODO (Phase 2) — uncomment along with the import above.
   // await initMocking();
-
-  const container = document.getElementById('root');
-  if (!container) throw new Error('Root container not found');
-
-  createRoot(container).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
+  ...
 }
 ```
 
-Uncomment the `await initMocking();` line. Save. Vite HMR reloads.
+Uncomment **both** lines. Save. Vite hot-reloads.
 
 ### Observe
 
 - Properties grid populates with 12 stayvibe cards.
-- Network tab: `GET /properties → 200 OK`, with an `x-powered-by: msw`
-  header proving the worker intercepted it.
-- Click the pill → "Mock OFF". Grid shows the 404 error again.
-  Click it back to "Mock ON" → properties reload.
+- Hosts strip swaps: the ten real users disappear, replaced by
+  **Ada Lovelace, Alan Turing, Grace Hopper, Margaret Hamilton**,
+  three of them with a red Superhost ★ badge.
+- Network tab: `GET /properties` and `GET /users` have an
+  `x-powered-by: msw` response header.
 
 ### Teaching point
 
-That single line (`await initMocking()`) does four things:
+That single `await initMocking()` does four things:
 
-1. Reads `VITE_ENABLE_MOCKING` and early-returns if it's off.
-2. Dynamically imports `mocks/browser` (this is what allows
-   tree-shaking in prod).
-3. Starts the worker, telling it to `bypass` unhandled requests.
+1. Reads `VITE_ENABLE_MOCKING`; if not `true`, returns immediately.
+   Vite inlines the env var at build time, so in production that
+   early return is the only reachable branch and Rollup
+   tree-shakes the entire MSW import graph out of the bundle.
+2. Dynamically imports `mocks/browser` and `mocks/handlers` (so
+   the chunks are split and only loaded when mocks run).
+3. Calls `worker.start(...)` once.
 4. Calls `worker.use(...createHandlers(config, baseUrl))` to
    register every domain's handlers in one shot.
 
-The runtime toggle then just calls `worker.resetHandlers()` / re-runs
-`worker.use(...)` — it never restarts the worker itself.
-
 ---
 
-## Phase 3 — Reveal the hosts strip (5 min)
+## Phase 3 — Runtime toggle (4 min) · mouse-only
 
-Open `src/App.tsx`. Near the top you'll find the import for
-`HostsSection` commented out, and further down the JSX call
-(`<HostsSection />`) also commented. Uncomment both.
+Click the **Mock ON** pill in the header.
 
 ### Observe
 
-- A "Meet your hosts" strip appears between the category pills and
-  the property grid.
-- It shows four hosts with photo avatars: **Ada Lovelace, Alan
-  Turing, Grace Hopper, Margaret Hamilton**. Three of them have a
-  red Superhost ★ badge on their avatar.
-- Click the mock pill off → the strip refreshes with **Leanne
-  Graham, Ervin Howell, Clementine Bauch, …** (ten real
-  JSONPlaceholder users, no avatars, no badges).
+- Pill turns grey: **"Mock OFF"**.
+- Properties grid returns to the 404 error.
+- Hosts strip re-fetches and shows the ten real JSONPlaceholder
+  users again.
+
+Click the pill again. Everything comes back.
 
 ### Teaching point
 
-Same endpoint (`/users`), same fetch code, different data depending
-on whether mocks are on. The mock layer doesn't replace the
-backend — it **shadows** it. This is why MSW is the right tool for
-seeded demos, deterministic tests, and "the data is ugly, I want
-curated fixtures for this screenshot" scenarios.
+The pill calls `useMockStore.toggle()`, which internally:
 
-Click the pill back on before moving to the next phase.
+- On OFF: calls `worker.resetHandlers()` — handlers wiped, every
+  subsequent request falls through to `onUnhandledRequest: 'bypass'`
+  and hits the real network.
+- On ON: calls `worker.use(...createHandlers(config, baseUrl))`
+  again.
 
----
-
-## Phase 4 — Reveal the stories section (3 min)
-
-Still in `src/App.tsx`. Uncomment the `StoriesSection` import and
-its JSX below the main grid.
-
-### Observe
-
-- A "Travel stories" section appears below the property grid with a
-  small **UNMOCKED** badge in the corner.
-- It shows four posts from JSONPlaceholder (`Sunt Aut Facere
-  Repellat Provident Occaecati Excepturi…` — yes, Latin ipsum, that's
-  what their /posts endpoint serves).
-- Toggle the mock pill on and off. The stories **don't change**.
-
-### Teaching point
-
-Open `mocks/handlers.ts`. There is no `postHandlers(...)` spread
-anywhere. The app's `/posts` endpoint is deliberately NOT mocked.
-When the worker sees a request it has no handler for, its
-`onUnhandledRequest: 'bypass'` setting (in `mocks/core/init.ts`)
-tells it to let the request continue to the real network.
-
-So "mock ON" does NOT mean "mock everything". Unmocked endpoints
-are automatically hybrid. Good to know.
+Critically, we do **not** call `worker.stop()` or
+`worker.start()` mid-session — that sequence is fragile and lets
+in-flight requests slip through un-mocked. Swapping handlers on
+the live worker is the reliable pattern.
 
 ---
 
-## Phase 5 — Hybrid mode (5 min)
+## Phase 4 — Hybrid mode (5 min) · no code, only a script
 
 Stop the dev server. Run:
 
@@ -186,125 +168,161 @@ Stop the dev server. Run:
 npm run dev:hybrid
 ```
 
-Look at `package.json` — `dev:hybrid` is literally
-`cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS vite`.
+Look at `package.json`. The script literally is
+
+```
+cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS vite
+```
 
 ### Observe
 
-- Pill still says "Mock ON" (the global flag is on).
-- Properties grid is still mocked (12 stayvibe cards).
-- Hosts strip now shows the **real** JSONPlaceholder users — even
-  though the global mock flag is on.
-- Network tab: `GET /properties` has the `x-powered-by: msw` header;
-  `GET /users` goes straight to `jsonplaceholder.typicode.com`.
+- Pill still says **"Mock ON"** — the global flag is on.
+- Properties grid is still mocked (12 stayvibe listings).
+- Hosts strip now shows the **real** JSONPlaceholder users even
+  though mocks are on globally.
+- Network tab: `GET /properties` has the `x-powered-by: msw`
+  header; `GET /users` does not.
 
 ### Teaching point
 
-`VITE_MSW_OMIT_KEYS` is parsed into `config.omittedKeys`. The
-`GET_HOSTS` handler calls `shouldMock(config, 'GET_HOSTS')` before
-doing anything, and when the key is omitted, it returns
-`passthrough()` — which tells MSW to let the request continue.
+`VITE_MSW_OMIT_KEYS` is parsed into `config.omittedKeys` in
+`mocks/core/mock.config.ts`. The `GET_HOSTS` handler calls
+`shouldMock(config, 'GET_HOSTS')` before doing anything, and
+when the key is omitted it returns `passthrough()` — which tells
+MSW to let the request continue.
 
-That means you can flip routes to the real backend one by one as
-they become available, without touching any code. Zero downside
-for teams running both dev and real API in parallel.
+The rest of the app doesn't know the difference. Exactly what you
+want when the real backend starts delivering endpoints one by one.
 
 ---
 
-## Phase 6 — Add the `amenities` domain (25 min, hands-on)
+## Phase 5 — Observe the unmocked endpoint (3 min) · read-only
 
-This is where you drive. The goal: every property card should show
-its amenities (WiFi, Pool, Kitchen, …) as small chips.
+Scroll down to the **Travel stories** section. Toggle the mock
+pill on and off a few times. Then try `npm run dev` (no mocks at
+all). Then `npm run dev:mock`.
 
-Use the recipe in `skills/msw-route/SKILL.md` — it walks through
-the exact steps with copy-pasteable code.
+### Observe
 
-### Target shape
+The Travel stories cards **never change**. They always come from
+the real `/posts` endpoint on JSONPlaceholder.
+
+### Teaching point
+
+Open `mocks/handlers.ts`. There is no `postHandlers(...)` spread.
+The app's `/posts` endpoint is deliberately NOT mocked. When the
+worker sees a request with no matching handler, its
+`onUnhandledRequest: 'bypass'` setting (in `mocks/core/init.ts`)
+tells it to let the request continue to the real network.
+
+So "mock ON" does NOT mean "mock everything". Unmocked endpoints
+are automatically hybrid — but by absence, not by configuration.
+
+---
+
+## Phase 6 — Add the `/amenities` mock (25 min, hands-on)
+
+This is the exercise. The goal: make the amenity chips appear on
+every property card.
+
+**What's already there, ready for you:**
+
+- The type: `src/domains/amenities/types.ts`.
+- The hook: `src/domains/amenities/useAmenities.ts` — already
+  fetches `/amenities`.
+- The UI: `PropertyCard` already renders chips if it receives
+  amenities, and `PropertyGrid` already calls `useAmenities()`
+  and forwards the data down.
+
+**What's missing and what you write:**
+
+Everything lives under `mocks/`. Use `skills/msw-route/SKILL.md`
+as the blueprint — it has the exact code you need. The four
+files you touch:
+
+1. `mocks/core/types.ts` — add `'GET_AMENITIES'` to the
+   `MockRouteKey` union.
+2. `mocks/domains/amenities.mock.ts` — create the file; export
+   `amenityHandlers(config, baseUrl)`.
+3. `mocks/handlers.ts` — import and spread the new factory inside
+   `createHandlers()`.
+4. *(Optional)* `mocks/domains/amenities.mock.spec.ts` — a quick
+   sanity spec.
+
+### Target shape for the mock data
 
 ```ts
-type Amenity = {
+interface Amenity {
   id: number;
-  name: string;
-  icon: string;             // emoji
-  propertyIds: number[];    // which properties have this amenity
-};
+  name: string;         // "WiFi", "Pool", "Kitchen", ...
+  icon: string;         // emoji or single glyph
+  propertyIds: number[]; // which properties offer this amenity
+}
 ```
 
-### The six steps
-
-1. **Extend the enum.** Add `'GET_AMENITIES'` to `MockRouteKey` in
-   `mocks/core/types.ts`.
-2. **Write the domain factory.** Create
-   `mocks/domains/amenities.mock.ts` exporting
-   `amenityHandlers(config, baseUrl)` that returns a single
-   `http.get('/amenities')` handler. Seed 6-8 amenities with
-   `propertyIds` arrays.
-3. **Register it.** Import and spread `amenityHandlers` inside
-   `createHandlers()` in `mocks/handlers.ts`.
-4. **Consume it.** Add `src/domains/amenities/types.ts` (the
-   `Amenity` interface) and `src/domains/amenities/useAmenities.ts`
-   (a hook mirroring `useProperties`). Read from `api('/amenities')`.
-5. **Render chips.** Update `src/components/PropertyCard.tsx` to
-   accept an optional `amenities?: Amenity[]` prop. Filter by
-   `property.id` and render small chips like `📶 WiFi`.
-6. **Wire the grid.** In `src/components/PropertyGrid.tsx` call
-   `useAmenities()` and pass the data down to every `PropertyCard`.
+Seed 6–8 amenities with mixed `propertyIds` so different cards
+show different chips.
 
 ### Observe at the end
 
-- Every property card has 2-4 amenity chips under the price.
-- Toggle mock off → amenities disappear (real API has no `/amenities`).
+Every property card shows 2–4 amenity chips under the price. Flip
+the mock pill off — chips disappear (real API has no `/amenities`,
+the hook silently errors, cards render without them).
 
-### Hybrid-mode drill (bonus)
+### Hybrid drill (bonus, 2 min)
 
-Edit the `dev:hybrid` script's `VITE_MSW_OMIT_KEYS` to include
-`GET_AMENITIES,GET_HOSTS`. Restart. Properties still mocked,
-amenities AND hosts both go real (and 404 in the case of
-`/amenities` — that's the signal).
+Edit the `dev:hybrid` script in `package.json`:
+
+```
+cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS,GET_AMENITIES vite
+```
+
+Restart. Properties still mocked, hosts AND amenities now go to
+the real API (and amenities disappear, because the real API 404s).
 
 ### If you get stuck
-
-Switch to the solution branch:
 
 ```bash
 git switch solution
 ```
 
-Diff it against `main` to see exactly which files changed and how.
+Diff against `main` to see exactly the four files the exercise
+asks you to write.
 
 ---
 
-## Phase 7 — Write a section test for amenities (5 min)
+## Phase 7 — Handler spec for amenities (5 min)
 
-Create `src/components/PropertyGrid.test.tsx` already exists — extend
-it with a test that:
+Create `mocks/domains/amenities.mock.spec.ts`. It should:
 
-1. Renders `<PropertyGrid category="all" />`.
-2. Waits for a property title to appear.
-3. Asserts that an amenity chip (e.g. "WiFi") is also visible.
+1. Spin up its own `setupServer(...amenityHandlers(config, baseUrl))`.
+2. `beforeAll` → `server.listen({ onUnhandledRequest: 'error' })`.
+3. `afterEach` → reset handlers.
+4. `afterAll` → close.
+5. Two quick tests:
+   - `GET /amenities` returns the seeded list.
+   - every amenity has a non-empty `propertyIds` array.
 
-Because section tests use `createHandlers(config, API)`, your new
-`amenityHandlers` factory is already in the server — no extra setup
-needed. Run:
+Run:
 
 ```bash
 npm run test:run
 ```
 
-The suite stays green.
+The full suite (including the new file) stays green.
 
 ---
 
 ## Common gotchas
 
-| Symptom                                   | Cause                                                                       |
-| ----------------------------------------- | --------------------------------------------------------------------------- |
-| Pill shows "Mock unavailable"             | You ran `npm run dev` (no flag). Use `dev:mock` or `dev:hybrid`.            |
-| Pill says "Mock ON" but requests 404      | `initMocking()` is still commented in `src/main.tsx`. Uncomment it.         |
-| `mockServiceWorker.js → 404` in console   | File missing from `public/`. Re-run `npx msw init public/`.                 |
-| Unhandled-request error in tests          | Handler URL doesn't match the test URL — check `joinUrl(baseUrl, path)`.    |
-| Hybrid omit doesn't take effect           | You changed `.env.development` but didn't restart. Or forgot `cross-env`.   |
-| Mocks don't hot-reload                    | Service workers cache. `Ctrl+Shift+R` or kill + restart the dev server.     |
+| Symptom                                     | Cause                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------- |
+| Pill shows "Mock unavailable"               | You ran `npm run dev` (no flag). Use `dev:mock` or `dev:hybrid`.      |
+| Pill says "Mock ON" but properties 404      | `initMocking()` is still commented in `src/main.tsx`. Uncomment it.   |
+| `mockServiceWorker.js → 404` in console     | File missing from `public/`. Re-run `npx msw init public/`.           |
+| Unhandled-request error in tests            | Handler URL doesn't match — confirm `joinUrl(baseUrl, path)`.         |
+| Hybrid omit doesn't take effect             | You changed the script but didn't restart. Env is read at boot only.  |
+| Mocks don't hot-reload                      | Service workers cache. `Ctrl+Shift+R` or kill + restart the dev server. |
 
 ---
 
@@ -323,7 +341,7 @@ export function amenityHandlers(config: MockConfig, baseUrl: string) {
   ];
 }
 
-// Pass-through per script
+// Per-script hybrid
 // package.json
 "dev:hybrid": "cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS vite"
 

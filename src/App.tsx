@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { CategoryPills } from './components/CategoryPills';
 import { Header } from './components/Header';
-// TODO (Phase 3) — uncomment to reveal the hosts strip.
-// import { HostsSection } from './components/HostsSection';
+import { HostsSection } from './components/HostsSection';
 import { PropertyGrid } from './components/PropertyGrid';
-// TODO (Phase 4) — uncomment to reveal the travel stories section
-// (an UNMOCKED endpoint, served straight from the real API).
-// import { StoriesSection } from './components/StoriesSection';
+import { StoriesSection } from './components/StoriesSection';
 import type { CategoryFilter } from './domains/properties/types';
 
+/**
+ * The app. Rendering is fixed — the workshop exercises only touch
+ * `main.tsx` (to bootstrap MSW) and the `mocks/` folder. No other
+ * React file is modified during the workshop.
+ */
 export default function App() {
   const [category, setCategory] = useState<CategoryFilter>('all');
 
@@ -16,13 +18,11 @@ export default function App() {
     <div className="min-h-screen bg-surface">
       <Header />
       <CategoryPills active={category} onChange={setCategory} />
-      {/* TODO (Phase 3) — uncomment to reveal the hosts strip. */}
-      {/* <HostsSection /> */}
+      <HostsSection />
       <main className="mx-auto max-w-7xl px-6 py-8">
         <PropertyGrid category={category} />
       </main>
-      {/* TODO (Phase 4) — uncomment to reveal the travel stories section. */}
-      {/* <StoriesSection /> */}
+      <StoriesSection />
       <footer className="mt-16 border-t border-hairline bg-surface-alt">
         <div className="mx-auto max-w-7xl px-6 py-6 text-xs text-ink-muted">
           <span>stayvibe is a workshop reference app.</span>{' '}
