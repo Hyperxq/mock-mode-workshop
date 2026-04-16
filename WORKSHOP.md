@@ -142,55 +142,90 @@ Hybrid mode is the explicit version of the same idea.
 
 ---
 
-### 3 · Unit tests — what they are, what they aren't (5 min)
+### 3 · Three test layers, one mental model (8 min)
 
-This is the part of the workshop that usually causes confusion.
-Say it out loud:
+This is the part of the workshop where teams usually lose the
+plot. The guiding principle, said out loud:
 
-> **Mock mode is a dev-and-demo tool. It is NOT a testing tool.**
-> If we deleted `mocks/` tomorrow, every component and hook unit
-> test in `src/` would still pass.
+> **Mock mode is a dev-and-demo tool. It is not a "testing
+> framework".** Production code and pure unit tests should work
+> if `mocks/` is deleted tomorrow. But **sections that fetch**
+> can reuse the mock handlers as fixtures — trading a little
+> coupling for a single source of canonical test data.
 
-Unit tests test YOUR CODE in isolation. They mock collaborators
-at the **import boundary**:
+So we end up with three kinds of test, each with a different
+relationship to `mocks/`:
 
-- `PropertyCard.test.tsx` — render with a prop, assert the output.
-  No hooks, no stores, no network.
-- `CategoryPills.test.tsx` — render with `active` + `onChange`,
-  click, assert `onChange` gets called with the right key.
-- `MockToggle.test.tsx` — `vi.mock('../stores/mock.store')` and
-  feed three different store shapes to cover the three visual
-  states. No MSW. Delete the worker tomorrow, this test is fine.
-- `useProperties.test.ts` — `vi.mock('../../api/client')` and
-  drive the hook with `mockResolvedValue` / `mockRejectedValue`.
-  Zero dependency on the mock handler layer.
+#### a) Unit tests — fully decoupled
 
-Prove it live:
+The component is exercised with props (or a mocked collaborator)
+and has zero dependency on the mock layer.
+
+- `PropertyCard.test.tsx` — render with a prop, assert output.
+- `CategoryPills.test.tsx` — click a pill, assert `onChange`.
+- `MockToggle.test.tsx` — `vi.mock('../stores/mock.store')`,
+  three visual states.
+- `useProperties.test.ts` — `vi.mock('../../api/client')`,
+  drive with `mockResolvedValue` / `mockRejectedValue`.
+
+Run them in isolation to prove the decoupling:
 
 ```bash
-# Run ONLY the app-side tests — nothing inside mocks/ is touched.
-npx vitest run src/
-
-# 4 files, 14 tests, all green.
+npx vitest run src/**/*.test.{ts,tsx} --exclude '**/*Section.test.tsx' --exclude '**/PropertyGrid.test.tsx'
 ```
 
-Then the natural question — *"so why do we have handler specs at all?"* —
-becomes a clean answer:
+Those files never import anything from `mocks/`.
 
-> The handler specs under `mocks/domains/*.mock.spec.ts` are
-> **tests of the mock infrastructure itself**. They prove the
-> mocks behave the way developers expect when they run
-> `dev:mock`. They're useful, but they're NOT what makes the
-> application work in production, and they're not what the unit
-> tests rely on.
+#### b) Section tests — MSW as a fixture library
 
-The takeaway for the room:
+Components that actually fetch (`HostsSection`, `PropertyGrid`,
+`StoriesSection`) are where hardcoded fake data gets painful.
+Instead of rebuilding twelve fake property objects in the test,
+we feed the component with the **same handlers** the app uses
+in dev:
 
-| Test file                              | What it tests               | If mocks/ is deleted… |
-| -------------------------------------- | --------------------------- | --------------------- |
-| `src/components/*.test.tsx`            | Component behaviour         | Still passes          |
-| `src/domains/**/*.test.ts`             | Hook behaviour              | Still passes          |
-| `mocks/domains/*.mock.spec.ts`         | The mock handlers themselves | Gone (expected)      |
+```ts
+const server = setupServer(...createHandlers(config, API));
+
+render(<PropertyGrid category="beachfront" />);
+
+await waitFor(() => {
+  expect(screen.getByText('Malibu, California')).toBeInTheDocument();
+});
+expect(screen.getAllByRole('article')).toHaveLength(2);
+```
+
+One fixture, two environments (dev browser + Node tests). When
+the seed data evolves, both update together.
+
+For endpoints that are **intentionally unmocked in the app**
+(like `/posts` — see Scenario 4), the section test adds its own
+scoped handler via `server.use()` so the fixture stays local to
+the test file.
+
+These tests DO couple to `mocks/`. That coupling is the payment
+for not maintaining parallel fixtures.
+
+#### c) Mock-infrastructure tests — sanity-check the mocks
+
+`mocks/domains/*.mock.spec.ts` test the MSW handlers themselves —
+they're inventory checks for the mock layer, orthogonal to app
+code.
+
+---
+
+The table the room should walk away with:
+
+| File                                    | Couples to `mocks/`? | Job                                         |
+| --------------------------------------- | -------------------- | ------------------------------------------- |
+| `PropertyCard.test.tsx`                 | No                   | Pure component unit test                    |
+| `CategoryPills.test.tsx`                | No                   | Pure component unit test                    |
+| `MockToggle.test.tsx`                   | No                   | Component + mocked Zustand                  |
+| `useProperties.test.ts`                 | No                   | Hook + mocked `api` client                  |
+| `HostsSection.test.tsx`                 | Yes — uses fixtures  | Section renders against MSW                 |
+| `PropertyGrid.test.tsx`                 | Yes — uses fixtures  | Section renders against MSW                 |
+| `StoriesSection.test.tsx`               | Scoped inline        | Section against a per-test handler          |
+| `mocks/domains/*.mock.spec.ts`          | Of course            | Sanity-check the mocks themselves           |
 
 ---
 

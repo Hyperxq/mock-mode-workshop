@@ -120,14 +120,17 @@ Every domain file exports a **function** like
 
 Plus:
 
-- **Unit tests** — `src/**/*.test.ts(x)` are component and hook
-  unit tests that mock collaborators at the import boundary
-  (`vi.mock('../stores/...')`, `vi.mock('../../api/client')`).
-  They would keep passing if `mocks/` were deleted tomorrow.
-  The mock layer is a dev-and-demo tool, not a testing surface.
-- **Mock infrastructure tests** — `mocks/domains/*.mock.spec.ts`
-  exercise the MSW handlers themselves so the mocked responses
-  stay sane as the project grows. Orthogonal to the app tests.
+- **Unit tests** — `PropertyCard`, `CategoryPills`, `MockToggle`,
+  `useProperties`. Mock collaborators at the import boundary
+  (`vi.mock`). Zero dependency on `mocks/` — they'd keep passing
+  if that folder were deleted.
+- **Section tests** — `HostsSection`, `PropertyGrid`,
+  `StoriesSection`. The components that actually *fetch*. They
+  use the same MSW handlers as the browser demo as their fixture
+  library, so canonical test data lives in one place. This tier
+  DOES couple to `mocks/` — on purpose.
+- **Mock-infrastructure tests** — `mocks/domains/*.mock.spec.ts`
+  sanity-check the MSW handlers themselves. Orthogonal to app code.
 - **Tree-shaking proof** — `npm run build` emits 1 chunk / 206 KB,
   `npm run build:mock` emits 4 chunks / 456 KB. The 229 KB diff is
   paid for dynamically. Prod bundles with mocks OFF carry **zero**
