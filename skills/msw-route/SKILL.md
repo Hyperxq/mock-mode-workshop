@@ -161,30 +161,37 @@ in dev AND testable.
 
 ### Step 4 — (Optional) Handler spec
 
-`mocks/domains/amenities.mock.spec.ts` — test the mock itself:
+The MSW server is registered globally in
+`mocks/setup-test-mocking.ts` and wired by `setupFiles` in
+`vite.config.ts`. That means a spec file only has to do the
+`fetch` + assertion — no `setupServer`, no lifecycle hooks.
+
+`mocks/domains/amenities.mock.spec.ts`:
 
 ```ts
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import type { MockConfig } from '../core/mock.config';
-import { amenityHandlers } from './amenities.mock';
-
-const BASE_URL = 'https://api.test.local';
-const config: MockConfig = { omittedKeys: new Set(), onUnhandled: 'error' };
-
-const server = setupServer(...amenityHandlers(config, BASE_URL));
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers(...amenityHandlers(config, BASE_URL)));
-afterAll(() => server.close());
+import { describe, expect, it } from 'vitest';
+import { TEST_BASE_URL } from '../setup-test-mocking';
 
 describe('amenityHandlers', () => {
   it('GET /amenities returns the seeded list', async () => {
-    const response = await fetch(`${BASE_URL}/amenities`);
+    const response = await fetch(`${TEST_BASE_URL}/amenities`);
     expect(response.status).toBe(200);
-    const data = await response.json();
+
+    const data = (await response.json()) as Array<{ name: string }>;
     expect(data.length).toBeGreaterThan(0);
   });
 });
+```
+
+Per-test overrides still work — import `server` from the same
+file and call `server.use(...)`:
+
+```ts
+import { server, TEST_BASE_URL } from '../setup-test-mocking';
+
+server.use(
+  http.get(`${TEST_BASE_URL}/amenities`, () => HttpResponse.json([])),
+);
 ```
 
 ### Step 5 — Consume it from the app

@@ -9,5 +9,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // ONE place wires the MSW server for every test file.
+    setupFiles: ['./mocks/setup-test-mocking.ts'],
   },
 });

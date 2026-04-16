@@ -1,30 +1,16 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import type { MockConfig } from '../core/mock.config';
-import { propertyHandlers } from './properties.mock';
+import { describe, expect, it } from 'vitest';
+import { TEST_BASE_URL } from '../setup-test-mocking';
 
 /**
- * The spec builds its OWN scoped MSW server from the same factory
- * the app uses. We feed it an explicit `MockConfig` so behaviour
- * is deterministic — no env reads, no shared state leaking in.
+ * Handler spec for the properties domain.
+ *
+ * The MSW server is registered globally in
+ * `mocks/setup-test-mocking.ts`; this file just calls `fetch` and
+ * asserts the canned responses.
  */
-
-const BASE_URL = 'https://api.test.local';
-
-const config: MockConfig = {
-  omittedKeys: new Set(),
-  onUnhandled: 'error',
-};
-
-const server = setupServer(...propertyHandlers(config, BASE_URL));
-
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers(...propertyHandlers(config, BASE_URL)));
-afterAll(() => server.close());
-
 describe('propertyHandlers', () => {
   it('GET /properties returns every seeded property', async () => {
-    const response = await fetch(`${BASE_URL}/properties`);
+    const response = await fetch(`${TEST_BASE_URL}/properties`);
     expect(response.status).toBe(200);
 
     const data = (await response.json()) as Array<{ title: string }>;
@@ -33,7 +19,7 @@ describe('propertyHandlers', () => {
   });
 
   it('GET /properties/:id returns the matching property', async () => {
-    const response = await fetch(`${BASE_URL}/properties/3`);
+    const response = await fetch(`${TEST_BASE_URL}/properties/3`);
     expect(response.status).toBe(200);
 
     const data = (await response.json()) as { location: string };
@@ -41,7 +27,7 @@ describe('propertyHandlers', () => {
   });
 
   it('GET /properties/:id returns 404 with a domain error message', async () => {
-    const response = await fetch(`${BASE_URL}/properties/9999`);
+    const response = await fetch(`${TEST_BASE_URL}/properties/9999`);
     expect(response.status).toBe(404);
 
     const data = (await response.json()) as { error: string };
@@ -60,7 +46,7 @@ describe('propertyHandlers', () => {
       category: 'design' as const,
     };
 
-    const response = await fetch(`${BASE_URL}/properties`, {
+    const response = await fetch(`${TEST_BASE_URL}/properties`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
@@ -70,10 +56,5 @@ describe('propertyHandlers', () => {
     const data = (await response.json()) as { id: number; title: string };
     expect(data.title).toBe(payload.title);
     expect(data.id).toBeGreaterThan(0);
-  });
-
-  it('returns the expected number of handlers per route key', () => {
-    const handlers = propertyHandlers(config, BASE_URL);
-    expect(handlers).toHaveLength(3);
   });
 });

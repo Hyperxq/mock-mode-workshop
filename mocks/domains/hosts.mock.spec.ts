@@ -1,24 +1,16 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import type { MockConfig } from '../core/mock.config';
-import { hostHandlers } from './hosts.mock';
+import { describe, expect, it } from 'vitest';
+import { TEST_BASE_URL } from '../setup-test-mocking';
 
-const BASE_URL = 'https://api.test.local';
-
-const config: MockConfig = {
-  omittedKeys: new Set(),
-  onUnhandled: 'error',
-};
-
-const server = setupServer(...hostHandlers(config, BASE_URL));
-
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers(...hostHandlers(config, BASE_URL)));
-afterAll(() => server.close());
-
+/**
+ * Handler spec for the hosts domain.
+ *
+ * The MSW server is registered globally in
+ * `mocks/setup-test-mocking.ts`; this file just calls `fetch` and
+ * asserts the canned responses.
+ */
 describe('hostHandlers', () => {
   it('GET /users returns the curated mocked hosts', async () => {
-    const response = await fetch(`${BASE_URL}/users`);
+    const response = await fetch(`${TEST_BASE_URL}/users`);
     expect(response.status).toBe(200);
 
     const data = (await response.json()) as Array<{
@@ -30,7 +22,7 @@ describe('hostHandlers', () => {
   });
 
   it('mocked hosts carry the isSuperhost flag (absent in real API)', async () => {
-    const response = await fetch(`${BASE_URL}/users`);
+    const response = await fetch(`${TEST_BASE_URL}/users`);
     const data = (await response.json()) as Array<{ isSuperhost?: boolean }>;
 
     const superhosts = data.filter((host) => host.isSuperhost);

@@ -293,15 +293,35 @@ asks you to write.
 
 ## Phase 7 — Handler spec for amenities (5 min)
 
-Create `mocks/domains/amenities.mock.spec.ts`. It should:
+The MSW server is wired globally via `mocks/setup-test-mocking.ts`
+(`setupFiles` in `vite.config.ts`). That means this spec is tiny —
+no `setupServer`, no `beforeAll/afterAll`, no lifecycle noise.
 
-1. Spin up its own `setupServer(...amenityHandlers(config, baseUrl))`.
-2. `beforeAll` → `server.listen({ onUnhandledRequest: 'error' })`.
-3. `afterEach` → reset handlers.
-4. `afterAll` → close.
-5. Two quick tests:
-   - `GET /amenities` returns the seeded list.
-   - every amenity has a non-empty `propertyIds` array.
+Create `mocks/domains/amenities.mock.spec.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { TEST_BASE_URL } from '../setup-test-mocking';
+
+describe('amenityHandlers', () => {
+  it('GET /amenities returns the seeded list', async () => {
+    const response = await fetch(`${TEST_BASE_URL}/amenities`);
+    expect(response.status).toBe(200);
+
+    const data = (await response.json()) as Array<{ propertyIds: number[] }>;
+    expect(data.length).toBeGreaterThan(0);
+  });
+
+  it('every amenity declares at least one property', async () => {
+    const response = await fetch(`${TEST_BASE_URL}/amenities`);
+    const data = (await response.json()) as Array<{ propertyIds: number[] }>;
+
+    for (const amenity of data) {
+      expect(amenity.propertyIds.length).toBeGreaterThan(0);
+    }
+  });
+});
+```
 
 Run:
 
