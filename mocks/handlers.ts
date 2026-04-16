@@ -1,4 +1,5 @@
 import { applyOmitList } from './core/omit';
+import { hostsHandlers } from './domains/hosts.mock';
 import { propertiesHandlers } from './domains/properties.mock';
 
 /**
@@ -16,6 +17,7 @@ import { propertiesHandlers } from './domains/properties.mock';
  */
 const map = applyOmitList({
   ...propertiesHandlers,
+  ...hostsHandlers,
 });
 
 export const handlers = Object.values(map);

@@ -15,7 +15,8 @@ import type { HttpHandler } from 'msw';
 export type MockRouteKey =
   | 'GET_PROPERTIES'
   | 'GET_PROPERTY'
-  | 'CREATE_PROPERTY';
+  | 'CREATE_PROPERTY'
+  | 'GET_HOSTS';
 
 /**
  * A record of mock handlers keyed by route. Using Partial<Record<...>>

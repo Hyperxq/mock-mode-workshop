@@ -71,18 +71,31 @@ mocks/
     init.ts              # initMocking() - dynamic import (tree-shakable)
     factory.ts           # createCrudHandlers - advanced, optional
   domains/
-    properties.mock.ts   # the reference example
+    properties.mock.ts   # Scenario 1: only-in-mock endpoint
     properties.mock.spec.ts
+    hosts.mock.ts        # Scenario 2: overrides /users on JSONPlaceholder
+    hosts.mock.spec.ts
   handlers.ts            # composes domain maps, applies omit list
   browser.ts             # setupWorker instance
 src/
   api/client.ts          # fetch wrapper with VITE_API_BASE
-  components/            # Header, CategoryPills, PropertyCard, PropertyGrid, MockToggle
+  components/            # Header, CategoryPills, HostsSection, PropertyCard, PropertyGrid, MockToggle
   domains/properties/    # useProperties hook + Property type + CATEGORIES
+  domains/hosts/         # useHosts hook + Host type
   stores/                # useMockStore (runtime toggle)
 tests/
   setup.ts               # msw/node setupServer - global for all specs
 ```
+
+### The three scenarios
+
+| # | Endpoint      | Mock ON                                | Mock OFF                                          |
+| - | ------------- | -------------------------------------- | ------------------------------------------------- |
+| 1 | `/properties` | 12 curated stayvibe listings           | 404 (real API has no such route)                  |
+| 2 | `/users`      | 4 CS pioneers with avatars + Superhost | 10 real JSONPlaceholder users, no avatars         |
+| 3 | hybrid        | set `VITE_MSW_OMIT_KEYS=GET_HOSTS`     | `/properties` mocked, `/users` hits the real API  |
+
+See [WORKSHOP.md](./WORKSHOP.md) for the live-demo script.
 
 ### Hybrid mode
 
@@ -92,7 +105,7 @@ the worker, so its requests pass through to the real API:
 ```bash
 # .env.mock
 VITE_ENABLE_MOCKING=true
-VITE_MSW_OMIT_KEYS=GET_PROPERTIES  # /properties hits the real API, POST is still mocked
+VITE_MSW_OMIT_KEYS=GET_HOSTS  # /users hits the real API, everything else stays mocked
 ```
 
 ### Tree-shaking guarantee

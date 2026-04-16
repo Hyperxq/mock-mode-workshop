@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CategoryPills } from './components/CategoryPills';
 import { Header } from './components/Header';
+import { HostsSection } from './components/HostsSection';
 import { PropertyGrid } from './components/PropertyGrid';
 import type { CategoryFilter } from './domains/properties/types';
 
@@ -11,6 +12,7 @@ export default function App() {
     <div className="min-h-screen bg-surface">
       <Header />
       <CategoryPills active={category} onChange={setCategory} />
+      <HostsSection />
       <main className="mx-auto max-w-7xl px-6 py-8">
         <PropertyGrid category={category} />
       </main>
