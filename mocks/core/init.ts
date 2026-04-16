@@ -31,7 +31,12 @@ export async function initMocking(): Promise<void> {
 
   await worker.start({
     onUnhandledRequest: config.onUnhandled,
-    serviceWorker: { url: '/mockServiceWorker.js' },
+    // Honour Vite's base path (`/` in dev, `/mock-mode-workshop/`
+    // on GitHub Pages) so the Service Worker is served from the
+    // same origin it's scoped to.
+    serviceWorker: {
+      url: `${import.meta.env.BASE_URL}mockServiceWorker.js`,
+    },
   });
 
   worker.use(...createHandlers(config, BACKEND_BASE_URL));
