@@ -14,6 +14,7 @@ export type MockRouteKey =
   | 'GET_PROPERTIES'
   | 'GET_PROPERTY'
   | 'CREATE_PROPERTY'
-  | 'GET_HOSTS';
+  | 'GET_HOSTS'
+  | 'GET_AMENITIES';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';

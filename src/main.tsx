@@ -1,9 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-// TODO (Phase 2) — uncomment the import AND the bootstrap call below
-// so the MSW worker is started when VITE_ENABLE_MOCKING=true.
-//
-// import { initMocking } from '../mocks/core/init';
+import { initMocking } from '../mocks/core/init';
 import App from './App';
 import './index.css';
 
@@ -19,8 +16,7 @@ import './index.css';
  * immediately and this is a no-op.
  */
 async function bootstrap() {
-  // TODO (Phase 2) — uncomment along with the import above.
-  // await initMocking();
+  await initMocking();
 
   const container = document.getElementById('root');
   if (!container) throw new Error('Root container not found');

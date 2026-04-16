@@ -2,6 +2,7 @@ import type { HttpHandler } from 'msw';
 import { BACKEND_BASE_URL } from './core/backend';
 import type { MockConfig } from './core/mock.config';
 import { normalizeBaseUrl } from './core/url';
+import { amenityHandlers } from './domains/amenities.mock';
 import { hostHandlers } from './domains/hosts.mock';
 import { propertyHandlers } from './domains/properties.mock';
 
@@ -26,5 +27,6 @@ export function createHandlers(
   return [
     ...propertyHandlers(config, base),
     ...hostHandlers(config, base),
+    ...amenityHandlers(config, base),
   ];
 }
