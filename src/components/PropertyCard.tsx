@@ -1,12 +1,26 @@
 import { useState } from 'react';
+import type { Amenity } from '../domains/amenities/types';
 import type { Property } from '../domains/properties/types';
 
 type Props = {
   property: Property;
+  /**
+   * Optional — full list of amenities; the card filters by
+   * `property.id` internally so the grid can fetch the list once
+   * and hand the same array to every card.
+   */
+  amenities?: Amenity[];
 };
 
-export function PropertyCard({ property }: Props) {
+const MAX_CHIPS = 4;
+
+export function PropertyCard({ property, amenities }: Props) {
   const [isWishlisted, setIsWishlisted] = useState(false);
+
+  const chips =
+    amenities
+      ?.filter((amenity) => amenity.propertyIds.includes(property.id))
+      .slice(0, MAX_CHIPS) ?? [];
 
   return (
     <article className="group flex flex-col gap-3">
@@ -60,6 +74,20 @@ export function PropertyCard({ property }: Props) {
       <p className="-mt-2 text-sm text-ink-muted leading-tight">
         {property.title}
       </p>
+
+      {chips.length > 0 && (
+        <ul className="flex flex-wrap gap-1">
+          {chips.map((amenity) => (
+            <li
+              key={amenity.id}
+              className="inline-flex items-center gap-1 rounded-full bg-surface-alt px-2 py-0.5 text-[11px] text-ink-muted"
+            >
+              <span aria-hidden>{amenity.icon}</span>
+              {amenity.name}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <p className="text-sm text-ink">
         <span className="font-semibold">${property.pricePerNight}</span>

@@ -1,3 +1,4 @@
+import { useAmenities } from '../domains/amenities/useAmenities';
 import { useProperties } from '../domains/properties/useProperties';
 import type { CategoryFilter } from '../domains/properties/types';
 import { useMockStore } from '../stores/mock.store';
@@ -9,7 +10,13 @@ type Props = {
 
 export function PropertyGrid({ category }: Props) {
   const { state, refetch } = useProperties();
+  const { state: amenitiesState } = useAmenities();
   const isMockAvailable = useMockStore((store) => store.isAvailable);
+
+  // Amenities are a nice-to-have — if the endpoint failed we still
+  // render the grid, just without the chips on each card.
+  const amenities =
+    amenitiesState.status === 'success' ? amenitiesState.amenities : undefined;
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
@@ -80,7 +87,11 @@ export function PropertyGrid({ category }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {visible.map((property) => (
-        <PropertyCard key={property.id} property={property} />
+        <PropertyCard
+          key={property.id}
+          property={property}
+          amenities={amenities}
+        />
       ))}
     </div>
   );
