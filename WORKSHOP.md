@@ -145,10 +145,15 @@ Hybrid mode is the explicit version of the same idea.
 ### 3 · The payoff: unit tests (5 min)
 
 Open `src/domains/properties/useProperties.test.ts`. It tests the
-React hook using the **same handlers** as the browser demo, via
-`msw/node` registered in `tests/setup.ts`:
+React hook using the **same `createHandlers(config, baseUrl)`
+factory** as the browser demo, this time via `msw/node`. Each
+spec file is self-contained — no global setup — so the behaviour
+of each test is obvious from the top of the file:
 
 ```ts
+const config: MockConfig = { omittedKeys: new Set(), onUnhandled: 'error' };
+const server = setupServer(...createHandlers(config, API));
+
 server.use(
   http.get(`${API}/properties`, () => HttpResponse.json([])),
 );

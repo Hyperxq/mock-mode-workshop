@@ -1,22 +1,23 @@
+import { BACKEND_BASE_URL } from './backend';
+import { resolveMockConfig } from './mock.config';
+
 /**
  * Initializes the MSW browser worker when mock mode is enabled.
  *
- * CRITICAL DETAIL — the dynamic import:
+ * CRITICAL DETAIL — the dynamic imports below:
  *
  *   await import('../browser');
+ *   await import('../handlers');
  *
- * When VITE_ENABLE_MOCKING is not "true", this function returns
- * immediately and the `../browser` module is NEVER imported. Because
- * the import is dynamic (not static), the bundler can split MSW into
- * a separate chunk that is only downloaded when mocks are active.
+ * When `VITE_ENABLE_MOCKING` is not "true" at build time, Vite
+ * inlines the env var as the literal string `"false"` (or
+ * `undefined`). The early `return` becomes the only reachable
+ * branch, Rollup DCE-s every `await import(...)` below it, and the
+ * `msw/*`, `mocks/browser`, `mocks/handlers` chunks are never
+ * emitted into the production bundle.
  *
- * That is why in production builds with mocking OFF, the MSW code
- * weighs ZERO bytes in the main bundle. Tree-shaking via dynamic
- * import — a pattern every mid+ frontend dev should know.
- *
- * After starting the worker we register the handlers via
- * `worker.use(...)`. The runtime toggle in `useMockStore` flips them
- * in and out of the live worker without ever stopping it.
+ * Run `npm run build` and `npm run build:mock` back-to-back to
+ * see the difference in `dist/`.
  */
 export async function initMocking(): Promise<void> {
   if (import.meta.env.VITE_ENABLE_MOCKING !== 'true') {
@@ -24,17 +25,20 @@ export async function initMocking(): Promise<void> {
   }
 
   const { worker } = await import('../browser');
-  const { handlers } = await import('../handlers');
+  const { createHandlers } = await import('../handlers');
+
+  const config = resolveMockConfig();
 
   await worker.start({
-    onUnhandledRequest: 'bypass',
-    serviceWorker: {
-      url: '/mockServiceWorker.js',
-    },
+    onUnhandledRequest: config.onUnhandled,
+    serviceWorker: { url: '/mockServiceWorker.js' },
   });
 
-  worker.use(...handlers);
+  worker.use(...createHandlers(config, BACKEND_BASE_URL));
 
   // eslint-disable-next-line no-console
-  console.info('[MSW] Mock mode ENABLED — worker is intercepting requests');
+  console.info('[MSW] Mock mode ENABLED — worker is intercepting requests', {
+    omitted: [...config.omittedKeys],
+    onUnhandled: config.onUnhandled,
+  });
 }

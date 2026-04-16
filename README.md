@@ -75,26 +75,39 @@ you turn the MSW worker on and off at runtime without reloading.
 ```
 mocks/
   core/
-    types.ts             # MockRouteKey union + MockHandlerMap
-    omit.ts              # VITE_MSW_OMIT_KEYS -> hybrid mode filter
+    backend.ts           # Single source of the real API URL
+    env.d.ts             # Typed import.meta.env shape
+    errors.ts            # notFound / badRequest / serverError helpers
     init.ts              # initMocking() - dynamic import (tree-shakable)
-    factory.ts           # createCrudHandlers - advanced, optional
+    mock.config.ts       # MockConfig + resolveMockConfig() + shouldMock()
+    types.ts             # MockRouteKey union + HttpMethod
+    url.ts               # normalizePath / normalizeBaseUrl / joinUrl
   domains/
-    properties.mock.ts   # Scenario 1: only-in-mock endpoint
+    properties.mock.ts   # propertyHandlers(config, baseUrl)  ← factory
     properties.mock.spec.ts
-    hosts.mock.ts        # Scenario 2: overrides /users on JSONPlaceholder
+    hosts.mock.ts        # hostHandlers(config, baseUrl)
     hosts.mock.spec.ts
-  handlers.ts            # composes domain maps, applies omit list
-  browser.ts             # setupWorker instance
+  handlers.ts            # createHandlers(config, baseUrl?) - composes domains
+  browser.ts             # setupWorker() (no initial handlers)
 src/
   api/client.ts          # fetch wrapper with VITE_API_BASE
-  components/            # Header, CategoryPills, HostsSection, PropertyCard, PropertyGrid, MockToggle
-  domains/properties/    # useProperties hook + Property type + CATEGORIES
+  components/            # Header, CategoryPills, HostsSection, PropertyCard, PropertyGrid, StoriesSection, MockToggle
+  domains/properties/    # useProperties hook + Property type + useProperties.test.ts
   domains/hosts/         # useHosts hook + Host type
+  domains/posts/         # usePosts hook (calls /posts with NO mock handler)
   stores/                # useMockStore (runtime toggle)
-tests/
-  setup.ts               # msw/node setupServer - global for all specs
 ```
+
+### The domain factory pattern
+
+Every domain file exports a **function** like
+`propertyHandlers(config, baseUrl): HttpHandler[]`. Two wins:
+
+- **Testable** — specs feed in their own `MockConfig` and a throwaway
+  base URL, no env reads at import time.
+- **Per-handler hybrid mode** — each handler calls `passthrough()` if
+  its `MockRouteKey` is in `config.omittedKeys`, so an omitted route
+  escapes to the real network at handler granularity.
 
 ### The four scenarios
 

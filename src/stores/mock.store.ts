@@ -14,38 +14,40 @@ const enabledAtBoot = import.meta.env.VITE_ENABLE_MOCKING === 'true';
 /**
  * Runtime toggle for MSW.
  *
- * Implementation detail — the worker is started exactly ONCE at app
- * boot (see `mocks/core/init.ts`). Toggling does NOT call
- * `worker.stop()` / `worker.start()` because restarting a service
- * worker mid-session is unreliable (some in-flight requests slip
- * through un-mocked).
+ * The worker is started exactly ONCE at app boot (see
+ * `mocks/core/init.ts`). Toggling does NOT call `worker.stop()` /
+ * `worker.start()` — restarting a service worker mid-session is
+ * unreliable and can let in-flight requests slip through un-mocked.
  *
- * Instead we mutate the handler list on the live worker:
- *   - Toggle OFF -> `worker.resetHandlers()` wipes all handlers.
- *     With zero handlers registered, everything falls through to
- *     `onUnhandledRequest: 'bypass'` and hits the real network.
- *   - Toggle ON  -> `worker.use(...handlers)` re-registers them.
+ * Instead we mutate the live worker's handler list:
+ *   - Toggle OFF → `worker.resetHandlers()` wipes all handlers.
+ *                  With zero handlers registered everything falls
+ *                  through to `onUnhandledRequest: 'bypass'` and
+ *                  hits the real network.
+ *   - Toggle ON  → `worker.use(...createHandlers(config, base))`
+ *                  re-registers them.
  *
  * TREE-SHAKING:
  * The env-flag check below is written as
  *   `import.meta.env.VITE_ENABLE_MOCKING !== 'true'`
  * on purpose. Vite inlines the env var at build time, so when
- * mocking is off the condition is a compile-time `true`, every
- * `await import('../../mocks/...')` becomes unreachable, and
- * Rollup DCE-s the MSW chunks out of the production bundle
- * entirely. See WORKSHOP.md → "Tree-shaking proof".
+ * mocking is off the condition folds to compile-time `true`,
+ * every `await import('../../mocks/...')` becomes unreachable,
+ * and Rollup DCE-s the MSW chunks out of the production bundle.
  */
 export const useMockStore = create<MockStore>((set, get) => ({
   isEnabled: enabledAtBoot,
   isAvailable: enabledAtBoot,
 
   toggle: async () => {
-    // Compile-time guard — Rollup eliminates everything below when
-    // VITE_ENABLE_MOCKING is not 'true' at build time.
+    // Compile-time guard — everything below is dead code in the
+    // default production build.
     if (import.meta.env.VITE_ENABLE_MOCKING !== 'true') return;
 
     const { worker } = await import('../../mocks/browser');
-    const { handlers } = await import('../../mocks/handlers');
+    const { createHandlers } = await import('../../mocks/handlers');
+    const { resolveMockConfig } = await import('../../mocks/core/mock.config');
+    const { BACKEND_BASE_URL } = await import('../../mocks/core/backend');
 
     if (get().isEnabled) {
       worker.resetHandlers();
@@ -55,7 +57,7 @@ export const useMockStore = create<MockStore>((set, get) => ({
       return;
     }
 
-    worker.use(...handlers);
+    worker.use(...createHandlers(resolveMockConfig(), BACKEND_BASE_URL));
     set({ isEnabled: true });
     // eslint-disable-next-line no-console
     console.info('[MSW] Handlers re-registered — mocking again');

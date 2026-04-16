@@ -1,23 +1,30 @@
-import { applyOmitList } from './core/omit';
-import { hostsHandlers } from './domains/hosts.mock';
-import { propertiesHandlers } from './domains/properties.mock';
+import type { HttpHandler } from 'msw';
+import { BACKEND_BASE_URL } from './core/backend';
+import type { MockConfig } from './core/mock.config';
+import { normalizeBaseUrl } from './core/url';
+import { hostHandlers } from './domains/hosts.mock';
+import { propertyHandlers } from './domains/properties.mock';
 
 /**
- * Central handler registry.
+ * Composes every domain's handlers into a single array.
  *
- * Each domain owns a MockHandlerMap (keyed by MockRouteKey) and we
- * compose them here. `applyOmitList` runs at module-load time and
- * filters out any routes listed in VITE_MSW_OMIT_KEYS, so those
- * requests pass through to the real API.
+ * Adding a new domain is a three-step drill:
+ *   1. Add its route keys to `MockRouteKey` (core/types.ts).
+ *   2. Create `mocks/domains/<name>.mock.ts` exporting
+ *      `<name>Handlers(config, baseUrl)`.
+ *   3. Add one import + one spread below.
  *
- * When adding a new domain:
- *   1. Create mocks/domains/<name>.mock.ts
- *   2. Add its keys to MockRouteKey (mocks/core/types.ts)
- *   3. Spread its map into the object below
+ * `baseUrl` defaults to the real backend but tests override it with
+ * a throwaway value so handlers are exercised in isolation.
  */
-const map = applyOmitList({
-  ...propertiesHandlers,
-  ...hostsHandlers,
-});
+export function createHandlers(
+  config: MockConfig,
+  baseUrl: string = BACKEND_BASE_URL,
+): HttpHandler[] {
+  const base = normalizeBaseUrl(baseUrl);
 
-export const handlers = Object.values(map);
+  return [
+    ...propertyHandlers(config, base),
+    ...hostHandlers(config, base),
+  ];
+}

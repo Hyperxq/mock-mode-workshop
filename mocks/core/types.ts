@@ -1,16 +1,14 @@
-import type { HttpHandler } from 'msw';
-
 /**
  * Unique identifier for every mocked HTTP route in the application.
  *
  * Why have keys at all? Because we want to:
- *   1. Enable HYBRID MODE — at runtime we can opt specific routes out
- *      of the mock layer and let them hit the real backend. That is
- *      driven by VITE_MSW_OMIT_KEYS (see core/omit.ts).
+ *   1. Enable HYBRID MODE — at runtime a specific route can opt out
+ *      of mocking and pass through to the real backend. That is
+ *      driven by `VITE_MSW_OMIT_KEYS` (see `mock.config.ts`).
  *   2. Give each handler a stable, discoverable name so tests can
  *      reference them individually instead of indexing into an array.
  *
- * Extend this union as you add new domains.
+ * Extend this union when you add a new domain.
  */
 export type MockRouteKey =
   | 'GET_PROPERTIES'
@@ -18,8 +16,4 @@ export type MockRouteKey =
   | 'CREATE_PROPERTY'
   | 'GET_HOSTS';
 
-/**
- * A record of mock handlers keyed by route. Using Partial<Record<...>>
- * lets each domain file declare only the keys it owns.
- */
-export type MockHandlerMap = Partial<Record<MockRouteKey, HttpHandler>>;
+export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';

@@ -1,25 +1,38 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it } from 'vitest';
-import { server } from '../../../tests/setup';
+import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import type { MockConfig } from '../../../mocks/core/mock.config';
+import { createHandlers } from '../../../mocks/handlers';
 import { useProperties } from './useProperties';
-
-const API = 'https://jsonplaceholder.typicode.com';
 
 /**
  * HOOK INTEGRATION TESTS
  *
- * These tests show the VALUE of MSW for unit tests: the same
- * handlers that drive the browser demo also drive the Node test
- * runner, so hooks and components can be tested against a realistic
- * network boundary — no fetch mock, no fake HTTP client, no
- * dependency injection.
+ * Same handlers as the browser demo, run in Node via `msw/node`.
+ * We scope the server to this file — no global setup — so every
+ * test file stays self-contained and easy to reason about.
  *
- * For per-test customization we import the shared `server` from
- * `tests/setup.ts` and call `server.use(...)` to prepend handlers
- * that override the default ones. `afterEach` in the setup file
- * resets them automatically.
+ * Per-test overrides use `server.use(...)` which prepends handlers
+ * ahead of the default ones. `afterEach` resets back to the
+ * configured default handler list.
  */
+
+// Must match whatever `api/client.ts` resolves `VITE_API_BASE` to.
+// The workshop defaults to JSONPlaceholder.
+const API = 'https://jsonplaceholder.typicode.com';
+
+const config: MockConfig = {
+  omittedKeys: new Set(),
+  onUnhandled: 'error',
+};
+
+const server = setupServer(...createHandlers(config, API));
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers(...createHandlers(config, API)));
+afterAll(() => server.close());
+
 describe('useProperties', () => {
   it('starts in "loading" and transitions to "success" with mocked data', async () => {
     const { result } = renderHook(() => useProperties());
@@ -40,8 +53,6 @@ describe('useProperties', () => {
   });
 
   it('renders the empty state when the API returns no properties', async () => {
-    // Override for this test only. The afterEach in tests/setup.ts
-    // resets handlers back to the default map.
     server.use(
       http.get(`${API}/properties`, () => HttpResponse.json([])),
     );
