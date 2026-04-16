@@ -151,10 +151,14 @@ Done. No code outside of those four files changes.
 
 ## Environment variables
 
-| Name                    | Purpose                                                        |
-| ----------------------- | -------------------------------------------------------------- |
-| `VITE_API_BASE`         | Base URL for the real API. Handlers also use this internally.  |
-| `VITE_ENABLE_MOCKING`   | `true` enables the MSW worker. Anything else disables it.      |
-| `VITE_MSW_OMIT_KEYS`    | Comma-separated `MockRouteKey` values to pass through.         |
+| Name                    | Purpose                                                        | Source                           |
+| ----------------------- | -------------------------------------------------------------- | -------------------------------- |
+| `VITE_API_BASE`         | Base URL for the real API. Handlers also use this internally.  | `.env.development` (committed)   |
+| `VITE_ENABLE_MOCKING`   | `true` enables the MSW worker. Anything else disables it.      | Injected by script via cross-env |
+| `VITE_MSW_OMIT_KEYS`    | Comma-separated `MockRouteKey` values to pass through.         | Injected by script via cross-env |
 
-See `.env.example`.
+Only `VITE_API_BASE` lives in a file. Every mock-related flag is
+visible at the top of `package.json` next to the script that uses
+it — the same way a CI pipeline would set them.
+
+Per-machine overrides go in `.env.development.local` (gitignored).

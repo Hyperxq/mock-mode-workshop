@@ -37,14 +37,19 @@ browser **Network tab** open — half of the workshop happens there.
 
 ## Scripts cheat sheet
 
-| Script              | What it does                                                                 |
-| ------------------- | ---------------------------------------------------------------------------- |
-| `dev`               | Vite without `VITE_ENABLE_MOCKING`. Pill shows "Mock unavailable" (disabled).|
-| `dev:mock`          | `VITE_ENABLE_MOCKING=true`. Worker registered. Pill is the runtime toggle.   |
-| `dev:hybrid`        | Mock ON + `VITE_MSW_OMIT_KEYS=GET_HOSTS`. `/users` passes through.           |
-| `build`             | Prod build WITHOUT mocks. MSW is DCE-ed out of the bundle.                   |
-| `build:mock`        | Prod build WITH mocks (useful only for comparing bundle sizes).              |
-| `test:run`          | Vitest + msw/node runs the handler specs AND the hook integration tests.    |
+All mock-related flags are injected per-script via `cross-env` in
+`package.json`. There is only one env file — `.env.development` —
+and it only carries the base API URL. Flags live next to the
+script they belong to, which makes CI/pipeline overrides obvious.
+
+| Script              | What it does                                                                      |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `dev`               | Plain `vite`. No mock flag. Pill shows "Mock unavailable" (disabled).             |
+| `dev:mock`          | `cross-env VITE_ENABLE_MOCKING=true vite`. Worker registered, pill is the toggle. |
+| `dev:hybrid`        | `cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS vite`.           |
+| `build`             | Prod build WITHOUT mocks. MSW is DCE-ed out of the bundle.                        |
+| `build:mock`        | `cross-env VITE_ENABLE_MOCKING=true vite build`. For bundle-size comparison.      |
+| `test:run`          | Vitest + msw/node runs handler specs AND hook integration tests.                  |
 
 ---
 
@@ -104,8 +109,8 @@ screenshots.
 **Mock ON globally, one route exempted and hits the real API.**
 
 1. `Ctrl+C` the dev server.
-2. `npm run dev:hybrid` (same as `dev:mock` but with
-   `VITE_MSW_OMIT_KEYS=GET_HOSTS` in `.env.hybrid`).
+2. `npm run dev:hybrid` (same as `dev:mock` but the script injects
+   `VITE_MSW_OMIT_KEYS=GET_HOSTS` via `cross-env`).
 3. Properties still come from the mock (12 stayvibe listings).
 4. Hosts strip now shows Leanne, Ervin, Clementine, … **even
    though `Mock ON` is lit**.
@@ -222,12 +227,12 @@ Steps:
 4. Spread into `mocks/handlers.ts`.
 5. Write `amenities.mock.spec.ts` — two tests is enough.
 6. Build `useAmenities` + render chips on `PropertyCard`.
-7. **Hybrid-mode drill:** set
-   `VITE_MSW_OMIT_KEYS=GET_AMENITIES,GET_HOSTS`, run
-   `npm run dev:hybrid` (you'll have to edit the env file — or add
-   a second `.env.hybrid2` and script), and prove in the network
-   tab that `/amenities` and `/users` both hit the real API while
-   `/properties` stays mocked.
+7. **Hybrid-mode drill:** either edit the `dev:hybrid` script to
+   add `,GET_AMENITIES` to the `VITE_MSW_OMIT_KEYS` value, OR add
+   a brand-new script (`dev:hybrid2`) with
+   `cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS,GET_AMENITIES vite`.
+   Run it and prove in the network tab that `/amenities` and
+   `/users` both hit the real API while `/properties` stays mocked.
 
 Instructor tip: keep the solution on a `solution/` branch. Don't
 show it until the last 5 minutes.
@@ -242,7 +247,7 @@ show it until the last 5 minutes.
 | Requests hit the real API              | `VITE_ENABLE_MOCKING` isn't `true`, or you didn't restart Vite.       |
 | `mockServiceWorker.js` 404             | File missing from `public/`. Run `npx msw init public/ --save`.       |
 | Tests fail with "unhandled request"    | Handler URL doesn't match (forgot the base URL in the handler).       |
-| Hybrid omit doesn't take effect        | You changed `.env.mock` but didn't restart the dev server.            |
+| Hybrid omit doesn't take effect        | You changed a script env var but didn't restart the dev server.       |
 | Mocks don't hot-reload                 | Service workers cache. Hard-reload (Ctrl+Shift+R) after editing.      |
 
 ---
@@ -261,9 +266,9 @@ server.use(
   http.get(`${API}/properties`, () => new HttpResponse(null, { status: 500 })),
 );
 
-// Pass-through a specific key (hybrid mode)
-// .env.hybrid
-VITE_MSW_OMIT_KEYS=GET_HOSTS
+// Pass-through a specific key (hybrid mode) — injected by the script
+// package.json
+"dev:hybrid": "cross-env VITE_ENABLE_MOCKING=true VITE_MSW_OMIT_KEYS=GET_HOSTS vite"
 
 // Runtime toggle
 useMockStore.getState().toggle();
