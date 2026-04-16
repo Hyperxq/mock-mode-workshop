@@ -44,14 +44,23 @@ workshop. See [WORKSHOP.md](./WORKSHOP.md) for the exercise.
 ```bash
 npm install
 
-# real API
+# no mocks — the header pill is disabled ("Mock unavailable")
 npm run dev
 
-# with mocks
+# runtime toggle, mocks ON by default
 npm run dev:mock
 
-# tests
-npm run test
+# mocks ON but /users passes through to the real API (hybrid)
+npm run dev:hybrid
+
+# handler specs + hook integration tests
+npm run test:run
+
+# production bundle WITHOUT mocks (MSW tree-shaken out)
+npm run build
+
+# production bundle WITH mocks (for bundle-size comparison)
+npm run build:mock
 ```
 
 Open [http://localhost:5173](http://localhost:5173).
@@ -87,13 +96,24 @@ tests/
   setup.ts               # msw/node setupServer - global for all specs
 ```
 
-### The three scenarios
+### The four scenarios
 
-| # | Endpoint      | Mock ON                                | Mock OFF                                          |
+| # | Endpoint      | Mock ON                                | Mock OFF / hybrid                                 |
 | - | ------------- | -------------------------------------- | ------------------------------------------------- |
 | 1 | `/properties` | 12 curated stayvibe listings           | 404 (real API has no such route)                  |
 | 2 | `/users`      | 4 CS pioneers with avatars + Superhost | 10 real JSONPlaceholder users, no avatars         |
-| 3 | hybrid        | set `VITE_MSW_OMIT_KEYS=GET_HOSTS`     | `/properties` mocked, `/users` hits the real API  |
+| 3 | hybrid        | `npm run dev:hybrid`                   | `/properties` mocked, `/users` hits real API      |
+| 4 | `/posts`      | real API (no mock handler)             | real API (unchanged — auto-passthrough)           |
+
+Plus:
+
+- **Unit tests** — `src/domains/properties/useProperties.test.ts`
+  shows how the same handlers power the browser demo AND the hook
+  integration tests (override handlers per-test with `server.use()`).
+- **Tree-shaking proof** — `npm run build` emits 1 chunk / 206 KB,
+  `npm run build:mock` emits 4 chunks / 456 KB. The 229 KB diff is
+  paid for dynamically. Prod bundles with mocks OFF carry **zero**
+  MSW bytes.
 
 See [WORKSHOP.md](./WORKSHOP.md) for the live-demo script.
 

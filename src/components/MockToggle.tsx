@@ -5,14 +5,29 @@ export function MockToggle() {
   const isAvailable = useMockStore((store) => store.isAvailable);
   const toggle = useMockStore((store) => store.toggle);
 
+  // When VITE_ENABLE_MOCKING is not "true" at boot, the worker is
+  // never registered. We render the control as a disabled pill so
+  // the user can see mocking exists as a concept and how to turn
+  // it on — without giving a false affordance.
   if (!isAvailable) {
     return (
-      <span
-        className="hidden rounded-full bg-surface-alt px-3 py-1 text-xs text-ink-muted md:inline"
-        title="Set VITE_ENABLE_MOCKING=true to enable"
+      <button
+        type="button"
+        disabled
+        aria-disabled
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-surface-alt px-3 py-1.5 text-xs font-semibold text-ink-muted opacity-80"
+        title="Mock mode is unavailable. Set VITE_ENABLE_MOCKING=true in .env.mock (or run `npm run dev:mock`) and restart to enable."
       >
-        Mock off
-      </span>
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden
+          className="size-3.5"
+          fill="currentColor"
+        >
+          <path d="M17 9V7a5 5 0 0 0-10 0v2H5v12h14V9h-2zm-7-2a3 3 0 0 1 6 0v2h-6V7zm7 12H7V11h10v8z" />
+        </svg>
+        Mock unavailable
+      </button>
     );
   }
 

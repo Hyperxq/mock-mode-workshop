@@ -3,6 +3,7 @@ import { CategoryPills } from './components/CategoryPills';
 import { Header } from './components/Header';
 import { HostsSection } from './components/HostsSection';
 import { PropertyGrid } from './components/PropertyGrid';
+import { StoriesSection } from './components/StoriesSection';
 import type { CategoryFilter } from './domains/properties/types';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <PropertyGrid category={category} />
       </main>
+      <StoriesSection />
       <footer className="mt-16 border-t border-hairline bg-surface-alt">
         <div className="mx-auto max-w-7xl px-6 py-6 text-xs text-ink-muted">
           <span>stayvibe is a workshop reference app.</span>{' '}

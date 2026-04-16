@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "dev:mock": "vite --mode mock",
+    "dev:hybrid": "vite --mode hybrid",
     "build": "tsc -b && vite build",
+    "build:mock": "tsc -b && vite build --mode mock",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",

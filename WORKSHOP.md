@@ -2,12 +2,11 @@
 
 **Duration:** 1 hour · **Audience:** mid-level frontend engineers
 
-> The repo you're in already has mocking wired for two domains:
-> `properties` (fictional, only exists in the mock) and `hosts`
-> (maps to JSONPlaceholder's real `/users` endpoint). Between them
-> they demonstrate the three mocking scenarios every frontend team
-> runs into. Your job during the workshop is to **replicate the
-> pattern for a third domain** (`amenities`) — see Exercise below.
+> The repo you're in has mocking wired for three domains and an
+> intentionally-unmocked fourth endpoint. Between them they cover
+> every real-world mocking scenario in under 30 minutes of live
+> demo. Your job is then to **replicate the pattern for a fifth
+> domain** (`amenities`) — see Exercise below.
 
 ---
 
@@ -17,18 +16,35 @@
 git clone https://github.com/Hyperxq/mock-mode-workshop.git
 cd mock-mode-workshop
 npm install
+
+# default run — NO mocks, the Mock pill is disabled
+npm run dev
+
+# with mocks
 npm run dev:mock
+
+# hybrid mode (Mock ON but /users passes through)
+npm run dev:hybrid
+
+# tests
+npm run test:run
 ```
 
 Open [http://localhost:5173](http://localhost:5173) and keep the
-browser **Network tab** open — half of the workshop is about what
-you see there.
+browser **Network tab** open — half of the workshop happens there.
 
-You should see:
+---
 
-- A "Meet your hosts" strip with 4 hosts (Ada, Alan, Grace, Margaret).
-- 12 property cards in a responsive grid.
-- A green `Mock ON` pill in the header.
+## Scripts cheat sheet
+
+| Script              | What it does                                                                 |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `dev`               | Vite without `VITE_ENABLE_MOCKING`. Pill shows "Mock unavailable" (disabled).|
+| `dev:mock`          | `VITE_ENABLE_MOCKING=true`. Worker registered. Pill is the runtime toggle.   |
+| `dev:hybrid`        | Mock ON + `VITE_MSW_OMIT_KEYS=GET_HOSTS`. `/users` passes through.           |
+| `build`             | Prod build WITHOUT mocks. MSW is DCE-ed out of the bundle.                   |
+| `build:mock`        | Prod build WITH mocks (useful only for comparing bundle sizes).              |
+| `test:run`          | Vitest + msw/node runs the handler specs AND the hook integration tests.    |
 
 ---
 
@@ -37,106 +53,163 @@ You should see:
 ### 1 · Why (10 min) — whiteboard
 
 - The pain: "waiting for the backend to start".
-- Alternatives (json-server, mirage) and why MSW wins
-  (same contract in dev + tests, no extra server process).
+- Alternatives (json-server, mirage) and why MSW wins: same contract
+  in dev + tests, no extra server process, one API surface.
 - The magic: MSW is **transparent**. Your app does
   `fetch('/properties')`. It doesn't know it's being mocked.
 
-### 2 · The three scenarios (15 min) — live demo
+### 2 · The four scenarios (20 min) — live demo
 
-Every real project hits these three situations. Show each one in
-the running app with the Network tab open.
+Every real project hits these. Show each one with the Network tab
+open so attendees *see* the difference.
 
 ---
 
 #### Scenario 1 · "The backend doesn't exist yet"
 
-**The app fetches `/properties`, but JSONPlaceholder has no such
-endpoint.** Without mocks, we're stuck.
+**App fetches `/properties`, JSONPlaceholder has no such endpoint.**
 
-1. Start on the page with `Mock ON`. Properties render.
-2. Click the `Mock ON` pill → it flips to `Mock OFF`.
+1. `npm run dev:mock`. Properties render.
+2. Click the `Mock ON` pill → `Mock OFF`.
 3. Properties grid shows `Couldn't load properties — Error: 404`.
-4. In the Network tab you'll see `GET /properties → 404` hitting
+4. Network tab: `GET /properties → 404` hitting
    `jsonplaceholder.typicode.com`.
 5. Click the pill again → properties come back.
 
-**Teaching point:** mocks let you build the UI *before* the backend
-exists. Same code path, same component, same fetch call.
+**Point:** mocks let you ship UI *before* the backend exists.
 
 ---
 
 #### Scenario 2 · "Same endpoint, different data"
 
-**The app fetches `/users`, which JSONPlaceholder *does* have. Our
-mock overrides it with curated data.**
+**App fetches `/users`, JSONPlaceholder *has* it. Our mock overrides it.**
 
-1. With `Mock ON`, look at the hosts strip: **Ada, Alan, Grace,
-   Margaret** — each with a photo avatar, some with a Superhost ★.
+1. With `Mock ON`: hosts strip shows **Ada, Alan, Grace, Margaret**
+   with photo avatars and Superhost ★ badges.
 2. Click `Mock ON` → `Mock OFF`.
-3. The hosts strip refreshes. Now you see **Leanne Graham, Ervin
-   Howell, Clementine Bauch, …** — ten real JSONPlaceholder users,
-   no avatars (they fall back to coloured initials), no Superhost
-   badges.
-4. Network tab: with `Mock ON`, the request has an
-   `x-powered-by: msw` header. With `Mock OFF`, the request actually
-   flies over the network to `jsonplaceholder.typicode.com/users`.
+3. Hosts strip refreshes. Now you see **Leanne Graham, Ervin Howell,
+   Clementine Bauch, …** — ten real JSONPlaceholder users, no
+   avatars, no badges.
+4. Network tab: mocked responses have `x-powered-by: msw`, real
+   ones don't.
 
-**Teaching point:** mocks aren't only for missing endpoints — they
-also let you shape data for demos, tests, edge-case reproduction, or
-deterministic screenshots. Same fetch, different payload.
+**Point:** mocks aren't only for missing endpoints — they shape
+data for demos, tests, edge-case reproduction, deterministic UI
+screenshots.
 
 ---
 
 #### Scenario 3 · "Hybrid mode — mock some, pass through others"
 
-**Mock ON globally, but one route is exempt and hits the real API.**
+**Mock ON globally, one route exempted and hits the real API.**
 
-1. Stop the dev server (`Ctrl+C`).
-2. Open `.env.mock` and uncomment the last line:
-   ```
-   VITE_MSW_OMIT_KEYS=GET_HOSTS
-   ```
-3. `npm run dev:mock` again.
-4. Properties still come from the mock (12 stayvibe listings).
-5. The hosts strip now shows Leanne, Ervin, Clementine, … (the real
-   JSONPlaceholder users) **even though `Mock ON` is still lit**.
-6. Network tab confirms: `GET /properties` is intercepted by the
-   worker, `GET /users` is not.
+1. `Ctrl+C` the dev server.
+2. `npm run dev:hybrid` (same as `dev:mock` but with
+   `VITE_MSW_OMIT_KEYS=GET_HOSTS` in `.env.hybrid`).
+3. Properties still come from the mock (12 stayvibe listings).
+4. Hosts strip now shows Leanne, Ervin, Clementine, … **even
+   though `Mock ON` is lit**.
+5. Network tab confirms: `/properties` intercepted by the worker,
+   `/users` flies to the real API.
 
-**Teaching point:** in real projects, the backend delivers endpoints
-one by one. You mock what's missing and point the rest at the real
-thing. One env variable, zero code changes.
+**Point:** when the real backend delivers endpoints one by one, you
+mock what's missing and point the rest at the real thing. One env
+variable, zero code changes.
 
 ---
 
-### 3 · Tour the code (5 min)
+#### Scenario 4 · "No handler = automatic passthrough"
 
-Walk through these files in order:
+**Scroll down to "Travel stories" — pulled from `/posts`, a real
+JSONPlaceholder endpoint WITHOUT a mock handler defined.**
 
-1. `mocks/core/types.ts` — the `MockRouteKey` union.
-2. `mocks/domains/properties.mock.ts` — only-in-mock domain.
-3. `mocks/domains/hosts.mock.ts` — overrides a real endpoint.
-4. `mocks/handlers.ts` — composition + omit filter.
-5. `mocks/core/omit.ts` — hybrid mode in 20 lines.
-6. `mocks/core/init.ts` — the **dynamic import** (tree-shaking).
-7. `src/main.tsx` — the async bootstrap.
-8. `src/stores/mock.store.ts` — the runtime toggle using
-   `worker.use()` / `worker.resetHandlers()` (never `stop/start`).
+1. Open the Network tab.
+2. `GET /posts?_limit=4` fires.
+3. The MSW worker sees a request it doesn't know about.
+   `onUnhandledRequest: 'bypass'` in `mocks/core/init.ts` lets it
+   continue to the network. The request lands at JSONPlaceholder.
+4. Toggle mock ON/OFF — the `Travel stories` cards don't change.
+   They always come from the real API.
 
-### 4 · Hands-on (25 min)
+**Point:** mocks are opt-in per route. "Mock ON" does NOT mean
+"mock everything". Endpoints without a handler pass through.
+Hybrid mode is the explicit version of the same idea.
+
+---
+
+### 3 · The payoff: unit tests (5 min)
+
+Open `src/domains/properties/useProperties.test.ts`. It tests the
+React hook using the **same handlers** as the browser demo, via
+`msw/node` registered in `tests/setup.ts`:
+
+```ts
+server.use(
+  http.get(`${API}/properties`, () => HttpResponse.json([])),
+);
+const { result } = renderHook(() => useProperties());
+await waitFor(() => {
+  expect(result.current.state.status).toBe('success');
+});
+```
+
+Three tests demonstrate:
+
+1. Happy path — handler returns the seed data.
+2. Empty state — `server.use()` overrides with `[]`.
+3. Error state — `server.use()` overrides with `500`.
+
+**Point:** write the contract ONCE (handlers), exercise it in
+browser dev AND node tests. No fetch mocks, no dependency
+injection, no separate fake HTTP client.
+
+---
+
+### 4 · Tree-shaking proof (3 min)
+
+```bash
+# default production build (mocks OFF)
+npm run build
+```
+→ 1 chunk, 34 modules, **206 KB**.
+No `browser`, no `handlers`, no `HttpResponse` in `dist/`.
+
+```bash
+# production build WITH mocks enabled
+npm run build:mock
+```
+→ 4 chunks, 261 modules, **456 KB** total. The MSW surface
+(browser + handlers + HttpResponse) adds ~229 KB uncompressed /
+~88 KB gzipped.
+
+The diff is paid for dynamically. In a real production build we
+ship the 206 KB bundle. MSW is a dev-and-test tool that weighs
+**zero** bytes in prod — as long as you keep the
+`if (import.meta.env.VITE_ENABLE_MOCKING !== 'true') return;` guard
+at the top of every dynamic-import site (see
+`src/stores/mock.store.ts` and `mocks/core/init.ts`). Vite inlines
+`import.meta.env.VITE_*` at build time, Rollup DCE-s the
+unreachable `await import(...)` calls, and the chunks are never
+emitted.
+
+**Point:** mocking is not a dev-only hack you have to rip out
+before shipping. Written correctly, it's invisible to production.
+
+---
+
+### 5 · Hands-on (20 min)
 
 > **Exercise — add the `amenities` domain.**
 
 Every property card should display its amenities as small chips
-(e.g. `WiFi`, `Pool`, `Kitchen`). Data shape:
+(e.g. `WiFi`, `Pool`, `Kitchen`). Shape:
 
 ```ts
 type Amenity = {
   id: number;
   name: string;     // "WiFi", "Pool", "Kitchen", ...
-  icon: string;     // emoji or single glyph
-  propertyIds: number[];  // which properties have this amenity
+  icon: string;     // emoji or glyph
+  propertyIds: number[];
 };
 ```
 
@@ -145,32 +218,19 @@ Steps:
 1. Create `mocks/domains/amenities.mock.ts` exporting
    `amenitiesHandlers`.
 2. Add `GET_AMENITIES` to `MockRouteKey` in `mocks/core/types.ts`.
-3. Seed a handful of amenities (mapping them to property ids).
-4. Spread `amenitiesHandlers` into `mocks/handlers.ts`.
-5. Write `amenities.mock.spec.ts` (two tests is enough).
-6. Build a `useAmenities` hook and render chip pills on each
-   `PropertyCard`.
+3. Seed a handful of amenities.
+4. Spread into `mocks/handlers.ts`.
+5. Write `amenities.mock.spec.ts` — two tests is enough.
+6. Build `useAmenities` + render chips on `PropertyCard`.
 7. **Hybrid-mode drill:** set
-   `VITE_MSW_OMIT_KEYS=GET_AMENITIES,GET_HOSTS`, restart, and prove
-   in the network tab that both of those endpoints go real while
-   `GET /properties` stays mocked.
+   `VITE_MSW_OMIT_KEYS=GET_AMENITIES,GET_HOSTS`, run
+   `npm run dev:hybrid` (you'll have to edit the env file — or add
+   a second `.env.hybrid2` and script), and prove in the network
+   tab that `/amenities` and `/users` both hit the real API while
+   `/properties` stays mocked.
 
 Instructor tip: keep the solution on a `solution/` branch. Don't
 show it until the last 5 minutes.
-
-### 5 · Going deeper (5 min) — tech leads
-
-If the room is moving fast, pull out any of these:
-
-- **The factory.** Open `mocks/core/factory.ts`. Replace the manual
-  properties handlers with `createCrudHandlers(...)` live and show
-  it still passes tests.
-- **Runtime toggle internals.** Walk through `useMockStore.toggle()`
-  and explain why we **never** call `worker.stop()/start()` — and
-  why MSW docs recommend handler-swap via `worker.use()` and
-  `worker.resetHandlers()` instead.
-- **Ask them:** "where else would you use this pattern?" — tests,
-  Storybook, demos for clients, detached UI reviews, cypress tests.
 
 ---
 
@@ -178,6 +238,7 @@ If the room is moving fast, pull out any of these:
 
 | Symptom                                | Cause                                                                 |
 | -------------------------------------- | --------------------------------------------------------------------- |
+| Pill is disabled ("Mock unavailable")  | You ran `npm run dev`. Run `npm run dev:mock` or `dev:hybrid`.        |
 | Requests hit the real API              | `VITE_ENABLE_MOCKING` isn't `true`, or you didn't restart Vite.       |
 | `mockServiceWorker.js` 404             | File missing from `public/`. Run `npx msw init public/ --save`.       |
 | Tests fail with "unhandled request"    | Handler URL doesn't match (forgot the base URL in the handler).       |
@@ -195,11 +256,16 @@ http.get(`${API}/amenities`, async () => {
   return HttpResponse.json(amenities);
 });
 
-// Pass-through a specific key (hybrid mode)
-// .env.mock
-VITE_MSW_OMIT_KEYS=GET_AMENITIES,GET_HOSTS
+// Per-test override (in Node)
+server.use(
+  http.get(`${API}/properties`, () => new HttpResponse(null, { status: 500 })),
+);
 
-// Toggle at runtime
+// Pass-through a specific key (hybrid mode)
+// .env.hybrid
+VITE_MSW_OMIT_KEYS=GET_HOSTS
+
+// Runtime toggle
 useMockStore.getState().toggle();
 ```
 

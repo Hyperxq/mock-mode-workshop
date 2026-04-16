@@ -26,14 +26,23 @@ const enabledAtBoot = import.meta.env.VITE_ENABLE_MOCKING === 'true';
  *     `onUnhandledRequest: 'bypass'` and hits the real network.
  *   - Toggle ON  -> `worker.use(...handlers)` re-registers them.
  *
- * This is the reliable pattern from the MSW docs.
+ * TREE-SHAKING:
+ * The env-flag check below is written as
+ *   `import.meta.env.VITE_ENABLE_MOCKING !== 'true'`
+ * on purpose. Vite inlines the env var at build time, so when
+ * mocking is off the condition is a compile-time `true`, every
+ * `await import('../../mocks/...')` becomes unreachable, and
+ * Rollup DCE-s the MSW chunks out of the production bundle
+ * entirely. See WORKSHOP.md → "Tree-shaking proof".
  */
 export const useMockStore = create<MockStore>((set, get) => ({
   isEnabled: enabledAtBoot,
   isAvailable: enabledAtBoot,
 
   toggle: async () => {
-    if (!get().isAvailable) return;
+    // Compile-time guard — Rollup eliminates everything below when
+    // VITE_ENABLE_MOCKING is not 'true' at build time.
+    if (import.meta.env.VITE_ENABLE_MOCKING !== 'true') return;
 
     const { worker } = await import('../../mocks/browser');
     const { handlers } = await import('../../mocks/handlers');

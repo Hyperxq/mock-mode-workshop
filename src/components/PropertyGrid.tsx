@@ -1,5 +1,6 @@
 import { useProperties } from '../domains/properties/useProperties';
 import type { CategoryFilter } from '../domains/properties/types';
+import { useMockStore } from '../stores/mock.store';
 import { PropertyCard } from './PropertyCard';
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 
 export function PropertyGrid({ category }: Props) {
   const { state, refetch } = useProperties();
+  const isMockAvailable = useMockStore((store) => store.isAvailable);
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
@@ -35,9 +37,18 @@ export function PropertyGrid({ category }: Props) {
         </p>
         <p className="mt-1 text-xs text-ink-muted">Error: {state.message}</p>
         <p className="mt-3 text-xs text-ink-muted">
-          Tip: run <code className="rounded bg-surface-alt px-1.5 py-0.5 font-mono">npm run dev:mock</code>{' '}
-          or flip the{' '}
-          <span className="font-semibold text-ink">Mock</span> toggle in the header.
+          {isMockAvailable ? (
+            <>
+              Tip: flip the{' '}
+              <span className="font-semibold text-ink">Mock</span> toggle in the header to re-enable mocks.
+            </>
+          ) : (
+            <>
+              Tip: restart the app with{' '}
+              <code className="rounded bg-surface-alt px-1.5 py-0.5 font-mono">npm run dev:mock</code>{' '}
+              to enable mocks.
+            </>
+          )}
         </p>
         <button
           type="button"
