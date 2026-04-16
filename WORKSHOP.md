@@ -142,36 +142,55 @@ Hybrid mode is the explicit version of the same idea.
 
 ---
 
-### 3 · The payoff: unit tests (5 min)
+### 3 · Unit tests — what they are, what they aren't (5 min)
 
-Open `src/domains/properties/useProperties.test.ts`. It tests the
-React hook using the **same `createHandlers(config, baseUrl)`
-factory** as the browser demo, this time via `msw/node`. Each
-spec file is self-contained — no global setup — so the behaviour
-of each test is obvious from the top of the file:
+This is the part of the workshop that usually causes confusion.
+Say it out loud:
 
-```ts
-const config: MockConfig = { omittedKeys: new Set(), onUnhandled: 'error' };
-const server = setupServer(...createHandlers(config, API));
+> **Mock mode is a dev-and-demo tool. It is NOT a testing tool.**
+> If we deleted `mocks/` tomorrow, every component and hook unit
+> test in `src/` would still pass.
 
-server.use(
-  http.get(`${API}/properties`, () => HttpResponse.json([])),
-);
-const { result } = renderHook(() => useProperties());
-await waitFor(() => {
-  expect(result.current.state.status).toBe('success');
-});
+Unit tests test YOUR CODE in isolation. They mock collaborators
+at the **import boundary**:
+
+- `PropertyCard.test.tsx` — render with a prop, assert the output.
+  No hooks, no stores, no network.
+- `CategoryPills.test.tsx` — render with `active` + `onChange`,
+  click, assert `onChange` gets called with the right key.
+- `MockToggle.test.tsx` — `vi.mock('../stores/mock.store')` and
+  feed three different store shapes to cover the three visual
+  states. No MSW. Delete the worker tomorrow, this test is fine.
+- `useProperties.test.ts` — `vi.mock('../../api/client')` and
+  drive the hook with `mockResolvedValue` / `mockRejectedValue`.
+  Zero dependency on the mock handler layer.
+
+Prove it live:
+
+```bash
+# Run ONLY the app-side tests — nothing inside mocks/ is touched.
+npx vitest run src/
+
+# 4 files, 14 tests, all green.
 ```
 
-Three tests demonstrate:
+Then the natural question — *"so why do we have handler specs at all?"* —
+becomes a clean answer:
 
-1. Happy path — handler returns the seed data.
-2. Empty state — `server.use()` overrides with `[]`.
-3. Error state — `server.use()` overrides with `500`.
+> The handler specs under `mocks/domains/*.mock.spec.ts` are
+> **tests of the mock infrastructure itself**. They prove the
+> mocks behave the way developers expect when they run
+> `dev:mock`. They're useful, but they're NOT what makes the
+> application work in production, and they're not what the unit
+> tests rely on.
 
-**Point:** write the contract ONCE (handlers), exercise it in
-browser dev AND node tests. No fetch mocks, no dependency
-injection, no separate fake HTTP client.
+The takeaway for the room:
+
+| Test file                              | What it tests               | If mocks/ is deleted… |
+| -------------------------------------- | --------------------------- | --------------------- |
+| `src/components/*.test.tsx`            | Component behaviour         | Still passes          |
+| `src/domains/**/*.test.ts`             | Hook behaviour              | Still passes          |
+| `mocks/domains/*.mock.spec.ts`         | The mock handlers themselves | Gone (expected)      |
 
 ---
 

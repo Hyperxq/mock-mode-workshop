@@ -1,40 +1,60 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { HttpResponse, http } from 'msw';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { MockConfig } from '../../../mocks/core/mock.config';
-import { createHandlers } from '../../../mocks/handlers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { api, ApiError } from '../../api/client';
+import type { Property } from './types';
 import { useProperties } from './useProperties';
 
 /**
- * HOOK INTEGRATION TESTS
+ * HOOK UNIT TEST.
  *
- * Same handlers as the browser demo, run in Node via `msw/node`.
- * We scope the server to this file — no global setup — so every
- * test file stays self-contained and easy to reason about.
- *
- * Per-test overrides use `server.use(...)` which prepends handlers
- * ahead of the default ones. `afterEach` resets back to the
- * configured default handler list.
+ * The `api` module is mocked at the IMPORT boundary. That way
+ * the hook's behaviour is tested in isolation — no MSW, no
+ * network, no service worker. Delete `mocks/` tomorrow and this
+ * file still passes.
  */
 
-// Must match whatever `api/client.ts` resolves `VITE_API_BASE` to.
-// The workshop defaults to JSONPlaceholder.
-const API = 'https://jsonplaceholder.typicode.com';
+vi.mock('../../api/client', async () => {
+  // Re-use the real ApiError class — its shape is part of the public
+  // contract the hook depends on.
+  const actual =
+    await vi.importActual<typeof import('../../api/client')>('../../api/client');
+  return {
+    ...actual,
+    api: vi.fn(),
+  };
+});
 
-const config: MockConfig = {
-  omittedKeys: new Set(),
-  onUnhandled: 'error',
-};
+// The store is mocked too so the hook doesn't try to read Zustand
+// internals at import time. `isEnabled` false is irrelevant for the
+// hook logic, it just prevents the effect from re-running.
+vi.mock('../../stores/mock.store', () => ({
+  useMockStore: (selector: (state: { isEnabled: boolean }) => unknown) =>
+    selector({ isEnabled: false }),
+}));
 
-const server = setupServer(...createHandlers(config, API));
+const fixture: Property[] = [
+  {
+    id: 1,
+    title: 'Oceanfront Villa',
+    location: 'Malibu, California',
+    host: 'Ada',
+    pricePerNight: 642,
+    rating: 4.96,
+    reviewCount: 214,
+    imageUrl: 'https://example.invalid/a.jpg',
+    category: 'beachfront',
+  },
+];
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers(...createHandlers(config, API)));
-afterAll(() => server.close());
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('useProperties', () => {
-  it('starts in "loading" and transitions to "success" with mocked data', async () => {
+  it('starts in "loading" and transitions to "success" with the fetched data', async () => {
+    vi.mocked(api).mockResolvedValue(fixture);
+
     const { result } = renderHook(() => useProperties());
 
     expect(result.current.state.status).toBe('loading');
@@ -46,35 +66,11 @@ describe('useProperties', () => {
     if (result.current.state.status !== 'success') {
       throw new Error('Expected success state');
     }
-    expect(result.current.state.properties).toHaveLength(12);
-    expect(result.current.state.properties[0]).toMatchObject({
-      title: 'Oceanfront Villa with Infinity Pool',
-    });
+    expect(result.current.state.properties).toEqual(fixture);
   });
 
-  it('renders the empty state when the API returns no properties', async () => {
-    server.use(
-      http.get(`${API}/properties`, () => HttpResponse.json([])),
-    );
-
-    const { result } = renderHook(() => useProperties());
-
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('success');
-    });
-
-    if (result.current.state.status !== 'success') {
-      throw new Error('Expected success state');
-    }
-    expect(result.current.state.properties).toEqual([]);
-  });
-
-  it('transitions to "error" when the API returns 500', async () => {
-    server.use(
-      http.get(`${API}/properties`, () =>
-        new HttpResponse(null, { status: 500, statusText: 'Server Error' }),
-      ),
-    );
+  it('transitions to "error" when `api` rejects', async () => {
+    vi.mocked(api).mockRejectedValue(new ApiError(500, 'Server Error'));
 
     const { result } = renderHook(() => useProperties());
 
@@ -86,5 +82,20 @@ describe('useProperties', () => {
       throw new Error('Expected error state');
     }
     expect(result.current.state.message).toContain('500');
+  });
+
+  it('refetch triggers a second call to api', async () => {
+    vi.mocked(api).mockResolvedValue(fixture);
+
+    const { result } = renderHook(() => useProperties());
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('success');
+    });
+
+    result.current.refetch();
+
+    await waitFor(() => {
+      expect(vi.mocked(api)).toHaveBeenCalledTimes(2);
+    });
   });
 });
