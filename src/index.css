@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/*
+ * Airbnb-inspired design tokens. See DESIGN.md for the full rationale.
+ * Tailwind 4 auto-generates utilities from @theme variables:
+ *   --color-rausch       -> bg-rausch, text-rausch, border-rausch
+ *   --radius-card        -> rounded-card
+ *   --shadow-card        -> shadow-card
+ */
+@theme {
+  --color-rausch: #ff385c;
+  --color-rausch-dark: #e00b41;
+  --color-ink: #222222;
+  --color-ink-muted: #6a6a6a;
+  --color-ink-soft: #929292;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f2f2f2;
+  --color-hairline: rgba(0, 0, 0, 0.08);
+
+  /* ui-rounded is a CSS-generic keyword that picks a rounded system font
+     (SF Pro Rounded on Apple, Segoe UI Variable Display where available). */
+  --font-sans: ui-rounded, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --radius-badge: 14px;
+  --radius-card: 20px;
+  --radius-lg-card: 32px;
+
+  --shadow-card:
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.12);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+  background-color: #ffffff;
+  color: #222222;
+}
+
+body {
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
