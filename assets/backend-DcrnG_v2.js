@@ -1,0 +1,1 @@
+import{t as e}from"./backend-YiaBEp5x.js";export{e as BACKEND_BASE_URL};

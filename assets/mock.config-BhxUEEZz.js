@@ -1,0 +1,1 @@
+function e(e){return new Set((e??``).split(`,`).map(e=>e.trim()).filter(Boolean))}function t(){let t={BASE_URL:`/mock-mode-workshop/`,DEV:!1,MODE:`production`,PROD:!0,SSR:!1,VITE_ENABLE_MOCKING:`true`};return{omittedKeys:e(t.VITE_MSW_OMIT_KEYS),onUnhandled:t.VITE_MSW_ON_UNHANDLED??`bypass`}}function n(e,t){return!e.omittedKeys.has(t)}export{n,t};

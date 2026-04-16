@@ -1,0 +1,1 @@
+import{t as e}from"./mock.config-BhxUEEZz.js";export{e as resolveMockConfig};

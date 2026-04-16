@@ -1,0 +1,1 @@
+var e=`https://jsonplaceholder.typicode.com`;export{e as t};
