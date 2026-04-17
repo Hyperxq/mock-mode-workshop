@@ -1,6 +1,6 @@
 # Workshop — Mock Mode with MSW v2
 
-**Duration:** 1 hour · **Audience:** mid-level frontend engineers
+**Duration:** 1 hour
 · **Format:** in-person, instructor walking the room
 
 This file is the **script**. It takes you from a half-wired project
